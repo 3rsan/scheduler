@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>Users</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.4.1/css/all.css" integrity="sha384-5sAR7xN1Nv6T6+dT2mhtzEpVJvfS3NScPQTrOxhwjIuvcA67KV2R5Jz6kr4abQsz" crossorigin="anonymous">
+        <link href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css" rel="stylesheet">
+
+        <link rel="stylesheet" href="../css/shards.min.css">
+        <link rel="stylesheet" href="../css/style.css">
+        <style>
+            .modal-wrapper{
+                width: 100%;
+                height: 100%;
+                position: absolute;
+                background-color: rgb(0,0,0, 0.5);
+                z-index: 1;
+            }
+            .modal-wrapper .validation-modal{
+                width: 250px;
+                height: 120px;
+                padding: 20px;
+                margin: 200px auto;
+                background-color: #ddd;
+                z-index: 1;
+                border-radius: 12px;
+                text-align: center;
+            }
+
+        </style>
+        <script>
+            function closeModal(){
+                document.getElementById("errorModal").style.display = "none";
+            }
+
+        </script>
+    </head>
+    <body>
+        <div id="errorModal" class="modal-wrapper" th:if="${showErrors}">
+            <div class="validation-modal" >
+                <p th:each="error : ${errors}" th:text="${error}"><p>
+                <button id="btnConfirm" onclick="closeModal()">OK</button>
+            </div>
+
+        </div>
+
+        <div class="container my-5">
+            <div class="row">
+                <div class="col-md-6">
+                    <div th:switch="${seminars}">
+                        <h2 class="my-5">Seminars</h2>
+                        <p class="my-5">
+                            <a href="/form" class="col-md-6">
+                                <i class="glyphicon glyphicon-plus-sign ml-2">
+                                </i>
+                                <span style="margin-left: 10px">Add Seminar</span>
+                            </a>
+                            <a href="/createAgenda" class="col-md-6" style="margin-left: 20px">
+                                <i class="glyphicon glyphicon-calendar ml-2">
+                                </i>
+                                <span style="margin-left: 10px">Create Agenda</span>
+                            </a>
+                        </p>
+                        <h2 th:case="null">No programs yet!</h2>
+                        <table th:case="*" class="table table-striped table-responsive-md">
+                            <thead>
+                                <tr>
+                                    <th>SeminarName</th>
+                                    <th>Duration</th>
+                                    <th>Edit</th>
+                                    <th>Delete</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="seminar : ${seminars}">
+                                    <td th:text="${seminar.seminarName}"></td>
+                                    <td th:text="${seminar.duration}"></td>
+                                    <td><a th:href="@{/edit/{id}(id=${seminar.id})}" class="btn btn-primary"><i class="glyphicon glyphicon-pencil ml-2"></i></a></td>
+                                    <td><a th:href="@{/delete/{id}(id=${seminar.id})}" class="btn btn-primary"><i class="glyphicon glyphicon-trash ml-2"></i></a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h2 class="my-5">Agenda</h2>
+                    <table class="table table-striped table-responsive-md">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Seminar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="event : ${events}">
+                                <td th:text="${event.getTime().toString()}"></td>
+                                <td th:text="${event.getSeminar().toString()}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

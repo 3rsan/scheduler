@@ -1,0 +1,4 @@
+com/n11/scheduler/entities/Seminar.class
+com/n11/scheduler/repositories/SeminarRepository.class
+com/n11/scheduler/Application.class
+com/n11/scheduler/controllers/SeminarController.class
