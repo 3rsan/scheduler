@@ -22,6 +22,7 @@ public class SeminarController {
     private final SeminarRepository seminarRepository;
     private List<String> errors = new ArrayList();
     private boolean showErrors=false;
+    private final long START_TIME_IN_MS = 7*3600*1000; // 9:00, assumed GMT+2
 
     @Autowired
     public SeminarController(SeminarRepository seminarRepository) {
@@ -54,18 +55,15 @@ public class SeminarController {
 
     @GetMapping("/createAgenda")
     public String createAgenda(Model model) {
-
-        long timeInMs = 7*3600*1000;//TODO: timeZone
-        List<Event> events = new ArrayList<>();
-        List<Seminar> seminars = (List<Seminar>) seminarRepository.findAll();
         List<Seminar> remainingSeminars = (List<Seminar>) seminarRepository.findAll();
+        model.addAttribute("seminars", remainingSeminars);
+
         List<Event> morningEvents = getMorningEvents(remainingSeminars);
         if(morningEvents.size() > 0){
-            List<Event> afternoonEvents =getAfternoonEvents(remainingSeminars);
+            List<Event> afternoonEvents = getAfternoonEvents(remainingSeminars);
             morningEvents.addAll(afternoonEvents);
         }
 
-        model.addAttribute("seminars", seminars);
         model.addAttribute("events", morningEvents);
         model.addAttribute("showErrors", showErrors);
         model.addAttribute("errors", errors);
@@ -89,7 +87,6 @@ public class SeminarController {
         }
         
         seminarRepository.save(seminar);
-
         return "redirect:/index";
     }
     
@@ -101,15 +98,8 @@ public class SeminarController {
         return "redirect:/index";
     }
 
-
-
     private ArrayList<Event>getMorningEvents(List<Seminar> remainingSeminars){
-        showErrors=false;
-        errors = new ArrayList();
-        ArrayList<Event> morningEvents = new ArrayList();
-        List<Seminar> matchedSeminars = new ArrayList();
-        //remainingSeminars = (List<Seminar>) seminarRepository.findAll();
-
+        //Set all possibilities for morning schedule
         ArrayList<Integer>[] combinations = new ArrayList[7];
         combinations[0] = new ArrayList<>(Arrays.asList(60,60,60));
         combinations[1] = new ArrayList<>(Arrays.asList(45,45,45,45));
@@ -119,16 +109,20 @@ public class SeminarController {
         combinations[5] = new ArrayList<>(Arrays.asList(30,30,30,30,30,30));
         combinations[6] = new ArrayList<>(Arrays.asList(45,45,30,30,30));
 
-        long timeInMs = 7*3600*1000; //TODO: timeZone
-        int count = 0;
+        ArrayList<Event> morningEvents = new ArrayList();
+        List<Seminar> matchedSeminars = new ArrayList();
+
+        long timeInMs = START_TIME_IN_MS;
+        int totalMinutes = 0;
+
+        resetValidation();
+
         for(ArrayList<Integer> durations : combinations){
             for (int duration : durations){
-
                 Seminar seminar = findSeminarForDuration(remainingSeminars, duration);
                 if(seminar != null){
                     remainingSeminars.remove(seminar);
                     matchedSeminars.add(seminar);
-
                 }
                 else{
                     matchedSeminars = new ArrayList();
@@ -137,30 +131,27 @@ public class SeminarController {
                 }
             }
 
-
             for(Seminar matchedSeminar : matchedSeminars){
-                count += matchedSeminar.getDuration();
+                totalMinutes += matchedSeminar.getDuration();
             }
 
-            if(count == 180){
+            if(totalMinutes == 180){ //Check if morning schedule is full
                 break;
             }
-
         }
 
-        if(count <180){
-            showErrors=true;
-            errors.add("Please add more seminars!");
+        if(totalMinutes < 180){
+            setValidationError("Please add more seminars!");
         }
         else{
             for(Seminar matchedSeminar : matchedSeminars){
                 Event event = new Event(matchedSeminar, new Time(timeInMs));
-                timeInMs += matchedSeminar.getDuration() * 60 * 1000;
+                timeInMs += convertToMilliSeconds(matchedSeminar.getDuration());
                 morningEvents.add(event);
             }
 
+            //Create a Seminar instance for lunch and add to events
             morningEvents.add(new Event(new Seminar("Lunch",60),new Time(timeInMs)));
-
         }
 
         return morningEvents;
@@ -172,43 +163,49 @@ public class SeminarController {
                 return seminar;
             }
         }
-
         return null;
-
     }
 
     private ArrayList<Event>getAfternoonEvents(List<Seminar> remainingSeminars){
-        errors = new ArrayList();
-        showErrors = false;
-        int count=240;
-        long timeInMs = 11*3600*1000;
+        int totalMinutes=240;
+        long timeInMs = convertToMilliSeconds(11*60);
         ArrayList<Event> afternoonEvents = new ArrayList();
-        for(Seminar remainingSeminar : remainingSeminars){
 
+        resetValidation();
+
+        for(Seminar remainingSeminar : remainingSeminars){
             Event event = new Event(remainingSeminar, new Time(timeInMs));
             int duration = remainingSeminar.getDuration();
-            timeInMs += duration * 60 * 1000;
-            count += duration;
+            timeInMs += convertToMilliSeconds(duration);
+            totalMinutes += duration;
             afternoonEvents.add(event);
-
-            /*if(count==240){
-                break;
-            }*/
         }
 
-        if(count < 420){
-            showErrors = true;
-            errors.add("Please add more seminars!");
+        if(totalMinutes < 420){
+           setValidationError("Please add more seminars!");
         }
-        else if(count >= 420 && count < 480){
-            int duration = 480 - count;
-            Seminar networking = new Seminar("Networking", duration);
+        else if(totalMinutes >= 420 && totalMinutes < 480){ //Check if there is time for networking
+            int difference = 480 - totalMinutes;
+            Seminar networking = new Seminar("Networking", difference);
             Event event = new Event(networking, new Time(timeInMs));
             afternoonEvents.add(event);
         }
 
-
         return afternoonEvents;
+    }
+
+    private void resetValidation(){
+        errors = new ArrayList();
+        showErrors = false;
+    }
+
+    private void setValidationError(String message){
+        showErrors = true;
+        errors.add(message);
+    }
+
+    private long convertToMilliSeconds(int minute){
+        return minute * 60 * 1000;
     }
 
 }
